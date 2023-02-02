@@ -1,0 +1,220 @@
+------Persisteant Volume (PV) is Always available in the cluster
+which can be used by all the pods. refer(7:00 for empty pod , hostpath)
+
+in order to use a persistant volume (PV) you need to claim it first,
+using a persistant volume claim (PVC)
+
+
+LEC-52-Kubernetes complete tutorials.
+====================
+
+Now create a EC2 instance using Ubuntu & select subnet ap-south-1a we are using
+it because we will create EBS volume in same AZ and allow all the traffic
+give the EC2 instance name as minikube.
+
+
+ Install Docker
+$  sudo apt update && apt -y install docker.io
+
+ Install kubectl
+$  curl -LO https://storage.googleapis.com/kubern... -s https://storage.googleapis.com/kubern... &&   chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+
+ Install Minikube
+$  curl -Lo minikube https://storage.googleapis.com/miniku... && chmod +x minikube && sudo mv minikube /usr/local/bin/
+
+ Start Minikube
+$  apt install conntrack
+$  minikube start --vm-driver=none
+$  minikube status
+================================
+PERSISTENT VOLUME
+================================ (refer 36:00)
+Now lets go to the AWS console and create EBS volume 
+1) click on create volume take 20gb and select as-south-1a AZ
+2) now copy the volume ID & PAste it yaml file 
+3) now go to the terminal and create file
+
+vi pv.yml
+
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: myebsvol
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  awsElasticBlockStore:
+    volumeID:           # YAHAN APNI EBS VOLUME ID DAALO
+    fsType: ext4
+	
+	
+save & exit
+
+kubectl apply -f mypv.yml
+
+kubectl get pv
+
+now you have to claim 
+
+vi mypvc.yml
+
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myebsvolclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+	  
+	  
+save & exit
+
+kubectl apply -f mypvc.yml
+
+kubectl get pvc
+now your pvc volume is got bounded
+
+now create a file
+
+vi deploypvc.yml
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pvdeploy
+spec:
+  replicas: 1
+  selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     app: mypv
+  template:
+    metadata:
+      labels:
+        app: mypv
+    spec:
+      containers:
+      - name: shell
+        image: centos
+        command: ["bin/bash", "-c", "sleep 10000"]
+        volumeMounts:
+        - name: mypd
+          mountPath: "/tmp/persistent"
+      volumes:
+        - name: mypd
+          persistentVolumeClaim:
+            claimName: myebsvolclaim
+			
+save & exit
+
+kubectl apply -f deploypvc.yml
+
+kubectl get deploy
+
+now that we have created now check replica set
+
+kubectl get rs
+
+ you will see rs
+ 
+kubectl get pods 
+
+you will see pods
+
+lets go into the pod
+
+kubectl exec <podname> -it --bin/bash
+we are in the container now
+
+cd /tmp/persistant/
+ls
+# create a file 
+
+vi testfile
+
+hi this is my tmp file
+
+save & exit
+
+ls
+exit
+
+now delete the pod
+
+kubectl delete pod <pod name>
+
+kubectl get pods ( you can see a new pod has been created)
+
+# Now go into the new pod
+
+kubectl exec <pod name> -it -- /bin/bash
+
+cat testfile ( you can see that data is available in new pod too)
+
+exit
+
+kubectl delete -f deploypvc.yml
+
+kubectl delete -f mypvc.yml
+
+kubectl delete -f mypv.yml
+
+
+------- HEALTHCHECK/LIVENESSPROBE ------
+
+health checks are used to check whether pod is properly running or not.
+if not then kubelet deletes it and recreates it.
+
+vi liveness.yml
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: mylivenessprobe
+spec:
+  containers:
+  - name: liveness
+    image: ubuntu
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 1000
+    livenessProbe:                                          
+      exec:
+        command:                                         
+        - cat                
+        - /tmp/healthy
+      initialDelaySeconds: 5          
+      periodSeconds: 5                                 
+      timeoutSeconds: 30  
+	  
+save & exit
+
+kubectl apply -f liveness.yml
+
+kubectl get pods
+
+kubectl describe pod <podname>
+
+kubectl get pods
+
+kubectl exec <pod name> -it -- /bin/bash
+
+now we are in the container
+
+cat /tmp/healthy
+
+echo $?
+zero (0) result shows your pod is healthy (refer 1:13)

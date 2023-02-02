@@ -1,0 +1,242 @@
+create One Ec2 instance with Ubuntu Machine with t2.medium as we are going to work on Minicube and acess it through putty and follow below commands.
+login as : Ubuntu
+sudo su
+
+Now install docker
+
+sudo apt update && apt -y install docker.io
+
+#now to run k8s we require Kubectl
+#install Kubectl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt) /bin/linux/amd64/kubectl && chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+
+kubectl --version
+
+#install Minikube
+
+curl -Lo minikube https://storage.googleapis.com/minikube/release/latest/minikube-linux/amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+ 
+#below command helps to run minicube smoothly & properly
+ 
+apt install conntrack 
+
+minicube start --vm-driver=none
+
+minicube status
+
+kubectl version
+
+kubectl get nodes
+
+kubectl describe node ip-172-31-34-55(paste the ip address what u got)
+
+Now Lets create our first Pod.
+
+vi pod1.yml
+press i in keyboard & paste the blelow command
+
+
+kind: Pod                                
+apiVersion: v1                     
+metadata:                           
+  name: testpod                  
+spec:                                    
+  containers:                      
+    - name: c00                     
+      image: ubuntu              
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+  restartPolicy: Never         # Defaults to Always
+  
+  #now save & exit
+  
+  kubectl apply -f pod1.yml
+  
+ #check how many pods we have
+  
+ kubectl get pods
+ 
+to check where exactly my pod is created
+
+kubectl get pods -o wide
+
+kubectl describe pod testpod 
+
+# to check the logs of a container
+
+kubectl logs -f testpod  
+
+press ctrl+z to come out of it . & press ctrl+l 
+
+# suppose we have more then one container in one pod then type
+
+kubectl logs -f testpod -c c00(#container name)
+
+#to delete the pod the type 
+
+kubectl delete pod testpod
+
+kubectl get pods 
+
+# now create one more file with annotations.
+
+vi pod1.yml
+
+#now paste the bleow command 
+
+kind: Pod                              
+apiVersion: v1                     
+metadata:                           
+  name: testpod 
+  annotations:
+     description : hamara pehala test pod create hone ja raha he 
+spec:                                    
+  containers:                      
+    - name: c00                     
+      image: ubuntu              
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+  restartPolicy: Never         # Defaults to Always
+
+
+ # save & exit
+ 
+ now type below command to create pod
+ 
+ kubectl apply -f pod1.yml
+ 
+ now u can check for annotations by below command
+  kubectl describe pod testpod
+  
+ #now delete pod
+  
+  kubectl delete pod testpod
+  
+  
+  -------- now create muti container -------
+  
+  vi pod2.yml
+  
+  #now paste the below 
+  
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod3
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]
+    - name: c01
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+ Save & exit
+ 
+ kubectl apply -f pod2.yml (your pod will now be created)
+ 
+ kubectl get pods
+ 
+ to know what is going on in the container
+ 
+ kubectl logs -f testpod3 -c c00 (container name may vary to c00/c01/c02 ...etc)
+ 
+ ctrl+z to come out of it.
+ 
+ # now you can check for other continers too.
+ 
+ # to know the ip of the pod 
+ 
+ kubectl exec testpod3 -c c00 -- hostname -i
+ 
+ 
+# to go into the specific container then
+
+kubectl exec testpod3 -it -c c01 -- /bin/bash (-it means interactive mode)
+
+now type ps
+
+now type ps -ef
+
+exit
+
+now delete the pod by deleting .yml file
+
+kubectl delete -f pod2.yml
+
+------ Environment variables in pod  -------
+
+
+vi pod3.yml 
+
+now paste below 
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: environments
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+      env:                        # List of environment variables to be used inside the pod
+      - name: MYNAME
+        value: BHUPINDER
+		
+	save & exit 
+	
+	kubectl apply -f pod3.yml (pod will be created)
+	
+	kubectl get pods
+	
+	kubectl exec environments -it -- /bin/bash
+	
+	now we are in the container
+	
+	 now type env
+	 
+	 now type echo $MYNAME
+	 
+	 exit
+	 
+	 now delete pod
+ kubectl delete -f pod3.yml
+ 
+ ------ expose ports -----
+	vi pod4.yml
+	
+	kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod4
+spec:
+  containers:
+    - name: c00
+      image: httpd      # httpd is a Appache server with port 80
+      ports:
+       - containerPort: 80  
+	
+
+save & exit
+
+kubectl apply -f pod4.yml
+
+kubectl get pods
+
+kubectl get pods -o wide (you will get the pod ip and node ip )
+
+ #to check whether the port is expose or not
+ 
+ curl 172.17.0.3:80  (type the pod ip)
+ # O/P ---  It works
+ 
+ #now delete the pod
+ 
+ kubectl delete -f pod4.yml
+ 
+ kubectl get pods ( to conform no pods are running)
+
+  
+  
+  
+
+

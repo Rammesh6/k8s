@@ -1,0 +1,57 @@
+create Three Ec2 instances by the Name (Master , Node1 & Node2)with Ubuntu Machine with t2.medium and 
+ acess it through putty and follow below commands.
+login as : Ubuntu
+
+sudo su
+apt-get update
+apt-get install apt-transport-https
+
+
+apt install docker.io -y
+docker --version
+systemctl start docker
+systemctl enable docker
+
+sudo curl -s https://packages.cloud.google.com/apt-key.gpg| sudo apt-key add 
+
+
+nano /etc/apt/sources.list.d/kubernetes.list
+ copy & paste the below command and press ctrl+x and press Y and press enter
+
+deb http://apt.kubernetes.io/ kubernetes-xenial main
+
+
+apt-get update
+
+apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+ till now all the above commands are common in all the nodes which includes master also.
+ 
+ The below commands are for master only  
+
+BOOTSTRAPPING THE MASTER NODE (IN MASTER)
+
+kubeadm init
+ 
+after typing the above command copy the command which starts with kubeadm_join... (follow TGU -- 52:22)
+COPY THE COMMAND TO RUN IN NODES & SAVE IN NOTEPAD
+
+now exicute the below commands in Master node.
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://raw.githibusercontent.com/coreos/flannel/master.Documentation/kube-flannel.yml 
+(follow 54:00)
+
+kubectl apply -f https://raw.githibusercontent.com/coreos/flannel/master.Documentation/k8s-manifests/kube-flannel-rbac.yml
+
+
+CONFIGURE WORKER NODES (IN NODES)
+
+COPY LONG CODE PROVIDED MY MASTER IN NODE NOW LIKE CODE GIVEN BELOW
+
+e.g- kubeadm join 172.31.6.165:6443 --token kl9fhu.co2n90v3rxtqllrs --discovery-token-ca-cert-hash sha256:b0f8003d23dbf445e0132a53d7aa1922bdef8d553d9eca06e65c928322b3e7c0
+
+GO TO MASTER AND RUN THIS COMMAND
+kubectl get nodes

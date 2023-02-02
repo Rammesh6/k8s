@@ -1,0 +1,277 @@
+Labels,Selectors,ReplicationController and replicaset in Kubernetes
+
+create One Ec2 instance with Ubuntu Machine with t2.medium as we are going to work on Minicube and acess it through putty and follow below commands.
+login as : Ubuntu
+sudo su
+
+Now install docker
+
+sudo apt update && apt -y install docker.io
+
+#now to run k8s we require Kubectl
+#install Kubectl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt) /bin/linux/amd64/kubectl && chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+
+kubectl --version
+
+#install Minikube
+
+curl -Lo minikube https://storage.googleapis.com/minikube/release/latest/minikube-linux/amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+ 
+#below command helps to run minicube smoothly & properly
+ 
+apt install conntrack 
+
+minicube start --vm-driver=none
+
+minicube status
+
+kubectl version
+
+kubectl get nodes
+
+kubectl describe node ip-172-31-34-55(paste the ip address what u got)
+
+Now Lets create our first Pod.
+
+vi pod5.yml
+
+ press i in the keyboard & paste the below mentioned
+ 
+kind: Pod
+apiVersion: v1
+metadata:
+  name: delhipod
+  labels:                                                   
+    env: development
+    class: pods
+spec:
+    containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+		 
+Save & Exit
+
+ kubectl apply -f pod5.yml
+  
+ #check how many pods we have
+  
+ kubectl get pods
+ 
+to check where exactly my pod is created
+
+kubectl get pods -o wide
+
+kubectl describe pod testpod 
+
+--- Now Check the Labels and Access it -----
+
+kubectl get pods --show-labels (shows the labels atteched to the pods)
+
+kubectl label pods delhipod myname=Ramesh (command line/immeparative way to give the labels to the pod)
+
+kubectl get pods --show-labels
+
+below command gives the o/p of all pods on which env=development label is attached.
+kubectl get pods -l env=development  (here -l is for labels) 
+
+below command gives the o/p of all pods on which env=development label is not attached.
+
+kubectl get pods -l env!=development
+
+#now lets delete the pod by using label
+
+kubectl delete pod -l env=development
+
+--- setbase selector ---  (46:00)
+
+kubectl get pods -l 'env in(development,testing)
+
+kubectl get pods -l 'env notin(development,testing)
+
+----- Node Selector ----
+
+Create a pod 
+
+vi pod6.yml
+
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nodelabels
+  labels:
+    env: development
+spec:
+    containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+    nodeSelector:                                         
+       hardware: t2-medium
+	   
+Save & Exit
+
+kubectl apply -f pod6.yml
+
+kubectl get pods
+
+kubectl describe pod nodelabels
+
+# Now label the nodes so that the pod is created in that perticular node 
+on which t2-medium label is attached.
+
+kubectl get nodes 
+
+kubectl label nodes ip-172-31-34-55 hardware=t2-medium  (applys label to the node)
+
+kubectl get nodes 
+
+kubectl describe pod nodelabels (now your pod will be created)
+
+kubectl delete -f pod6.yml
+
+------ Scaling and Replication ----
+
+Create a file for Replication Controller
+
+vi myrc.yml
+
+
+kind: ReplicationController               
+apiVersion: v1
+metadata:
+  name: myreplica
+spec:
+  replicas: 4            
+  selector:        
+    myname: Bhupinder                           
+  template:                
+    metadata:
+      name: testpod6
+      labels:            
+        myname: Bhupinder
+    spec:
+     containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+		 
+		 
+Save & Exit
+	 
+kubectl apply -f myrc.yml
+	 
+kubectl get rc
+		 
+kubectl describe rc myreplica
+		 
+kubectl get pods
+		 
+#now you delete a pod
+		 
+kubectl delete pod myreplica-2wrst (pod name)
+		 
+kubectl get pods
+		 
+#now you can see one more pod is started running due to replica
+
+
+kubectl get rc
+
+kubectl	get pods --show-labels
+
+----- now to scale up -----
+
+kubectl	scale --replicas=8 rc -1 myname=bhupinder ('templet name'by which replica will be created)
+
+kubectl	get rc
+
+kubectl get pods 
+
+kubectl	scale --replicas=2 rc -l myname=bhupinder
+
+kubectl	get pods
+
+kubectl	get rc
+
+# Now delete the object Replication controller
+
+kubectl	delete -f myrc.yml
+
+kubectl	get rc
+
+kubectl	get pods
+
+--------- Replica Set --------
+# Replica set is a next generation Replication controller
+  replication controller only supports equality-based sector where as 
+  replica set supports set-based selector also
+  
+  
+ # Create a new Replica Set file 
+
+vi myrs.yml
+
+
+kind: ReplicaSet                                    
+apiVersion: apps/v1                            
+metadata:
+  name: myrs
+spec:
+  replicas: 2  
+  selector:                  
+    matchExpressions:                             # these must match the labels
+      - {key: myname, operator: In, values: [Bhupinder, Bupinder, Bhopendra]}
+      - {key: env, operator: NotIn, values: [production]}
+  template:      
+    metadata:
+      name: testpod7
+      labels:              
+        myname: Bhupinder
+    spec:
+     containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]
+		 
+		 
+Save & Exit
+
+kubectl apply -f myrs.yml
+
+kubectl	get rs
+
+kubectl get pods 
+
+# Now scale down it
+
+kubectl	scale --replicas=1 rs/myrs 
+
+kubectl get rs 
+
+kubectl get pods
+
+now delete	replica	set
+
+kubectl delete rs/myrs
+
+kubectl get rs  
+
+now if you want to delete yml file 
+
+ls
+
+rm -rf pod6.yml
+
+
+
+
+
+
+
+
+
+
+
